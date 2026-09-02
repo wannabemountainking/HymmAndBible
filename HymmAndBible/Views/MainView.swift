@@ -6,44 +6,54 @@
 //
 
 import SwiftUI
+import AVFAudio
 
 struct MainView: View {
 	
 	@State private var audioManager: AudioPlaybackManager = .shared
 	
     var body: some View {
-        Spacer()
-		Button {
-			// Action
-			audioManager.playHymm()
-		} label: {
-			Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
-				.resizable()
-				.scaledToFit()
-				.frame(width: 35, height: 35)
-				.foregroundStyle(Color.white)
-				.background(
-					RoundedRectangle(cornerRadius: 10)
-						.fill(Color.blue)
-						.frame(width: 100, height: 70)
+		VStack {
+			Text("찬송가 301장")
+				.font(.largeTitle)
+				.padding(.bottom, 50)
+			
+			if let player = audioManager.player {
+				Slider(
+					value: $audioManager.currentTime,
+					in: 0...player.duration,
+					label: { Text("재생진행율") },
+					minimumValueLabel: { Text("00:00") },
+					maximumValueLabel: { Text(player.duration.runningTime) },
+					onEditingChanged: { editing in
+						audioManager.isDragging = editing
+						if !editing {
+							audioManager.player?.currentTime = audioManager.currentTime
+						}
+					}
 				)
-		}
-		.padding()
-		
-		ForEach(audioManager.errorMessages, id: \.self) { error in
-			Text(error)
-		}
-		
-		Spacer()
-		
-		Button {
-			// Action
-			audioManager.errorMessages.removeAll()
-		} label: {
-			Text("에러 메시지 삭제")
-				.font(.title)
-				.foregroundStyle(.purple)
-		}
+				.padding(.horizontal, 20)
+				
+				Text("진행된 시간: \(audioManager.currentTime.runningTime)")
+			}
+			
+			Button {
+				// Action
+				audioManager.playHymm()
+			} label: {
+				Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
+					.resizable()
+					.scaledToFit()
+					.frame(width: 20, height: 20)
+					.foregroundStyle(Color.white)
+					.background(
+						RoundedRectangle(cornerRadius: 10)
+							.fill(Color.blue)
+							.frame(width: 70, height: 50)
+					)
+			}
+			.padding(40)
+		} //:VSTACK
     }
 }
 
