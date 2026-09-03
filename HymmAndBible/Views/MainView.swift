@@ -22,13 +22,20 @@ struct MainView: View {
 				Slider(
 					value: $audioManager.currentTime,
 					in: 0...player.duration,
-					label: { Text("재생진행율") },
+					label: { Text("재생진행율")
+					},
 					minimumValueLabel: { Text("00:00") },
 					maximumValueLabel: { Text(player.duration.runningTime) },
 					onEditingChanged: { editing in
 						audioManager.isDragging = editing
 						if !editing {
 							audioManager.player?.currentTime = audioManager.currentTime
+							audioManager.updateNowPlayingInfo(
+								title: "찬송가 301장",
+								currentTime: audioManager.currentTime,
+								duration: audioManager.player?.duration ?? 0,
+								rate: audioManager.isPlaying ? 1.0 : 0.0
+							)
 						}
 					}
 				)

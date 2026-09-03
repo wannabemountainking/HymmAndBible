@@ -55,6 +55,34 @@ final class AudioPlaybackManager: NSObject {
 			self.playHymm()
 			return .success
 		}
+		
+		NotificationCenter.default.addObserver(
+			forName: AVAudioSession.interruptionNotification,
+			object: nil,
+			queue: .main,
+			using: { [weak self] noti in
+				guard let self = self,
+					  let userInfo = noti.userInfo,
+					  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+					  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+				
+				switch type {
+				case .began:
+					if self.isPlaying {
+						self.playHymm()
+					}
+				case .ended:
+					guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else {return}
+					let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+					if options.contains(.shouldResume) {
+						self.playHymm()
+					}
+				@unknown default:
+					break
+				}
+				
+			}
+		)
 	}
 	
 	func playHymm() {
@@ -95,6 +123,26 @@ final class AudioPlaybackManager: NSObject {
 		
 		// 3. isPlaying을 토글해서 isPlaying의 상태가 변한 것을 바로 반영한다
 		isPlaying.toggle()
+		
+		// 4. 잠금화면 표시 목록 설정
+		updateNowPlayingInfo(
+			title: "찬송가 301장",
+			currentTime: currentTime,
+			duration: player?.duration ?? 0,
+			rate: isPlaying ? 1.0 : 0.0
+		)
+	}
+	
+	func updateNowPlayingInfo(title: String, currentTime: Double, duration: Double, rate: Double) {
+		
+		var nowPlayingInfo: [String: Any] = [:]
+		
+		nowPlayingInfo[MPMediaItemPropertyTitle] = title
+		nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+		nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
+		nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = rate
+		
+		MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
 	}
 }
 
