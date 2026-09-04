@@ -9,6 +9,7 @@ import Foundation
 import Observation
 import AVFAudio
 import MediaPlayer
+import UIKit
 
 @Observable
 final class AudioPlaybackManager: NSObject {
@@ -21,20 +22,17 @@ final class AudioPlaybackManager: NSObject {
 	var currentTime: Double = 0
 	var isDragging: Bool = false
 	var timer: Timer? = nil
+	var savedTime: Double = 0
 	
 	var eventHandler = PlayerEventHandler()
 	
 	private override init() {
 		super.init()
-		eventHandler.onFinish = { [weak self] in
-			guard let self else {return}
-			self.isPlaying = false
-			self.currentTime = 0
-			self.timer?.invalidate()
-			self.timer = nil
-		}
+
+		// TODO: - UserDefault에서 초기 설정 가져오기
+		savedTime = UserDefaults.standard.double(forKey: "lastPlaybackPosition")
 		
-		// AVAudioSession 설정 및 활성화 (1회 실행)
+		// AVAudioSession 설정 및 활성화 (1회 실행, setCategory(.playback 설정)
 		let audioSession = AVAudioSession.sharedInstance()
 		do {
 			try audioSession.setCategory(.playback) // 오디오 세션 카테고리 설정
@@ -44,6 +42,7 @@ final class AudioPlaybackManager: NSObject {
 			print("AVAudionSession 애러 발생")
 		}
 		
+		// 잠금화면 버튼 설정(재생과 일시멈춤 버튼 전용)
 		let commandCenter = MPRemoteCommandCenter.shared()
 		commandCenter.playCommand.addTarget { [weak self] event in
 			guard let self else {return .commandFailed}
@@ -56,15 +55,14 @@ final class AudioPlaybackManager: NSObject {
 			return .success
 		}
 		
+		// 전화 등의 interruption에 대응하는 코드 (전화가 오면 노래 일시정지(이미 일시정지 중이면 그냥 놔둠), 이미 일시정지 중의 것은 독립적으로 실행)
 		NotificationCenter.default.addObserver(
 			forName: AVAudioSession.interruptionNotification,
 			object: nil,
 			queue: .main,
-			using: { [weak self] noti in
+			using: { [weak self] notification in
 				guard let self = self,
-					  let userInfo = noti.userInfo,
-					  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-					  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+					  let type = notification.interruptionType else { return }
 				
 				switch type {
 				case .began:
@@ -72,17 +70,36 @@ final class AudioPlaybackManager: NSObject {
 						self.playHymm()
 					}
 				case .ended:
-					guard let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt else {return}
-					let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+					guard let options = notification.interruptionOptions else { return }
 					if options.contains(.shouldResume) {
 						self.playHymm()
 					}
 				@unknown default:
 					break
 				}
-				
 			}
 		)
+		
+		// 백그라운드로 나간 시점에 currentTime 저장하기 등록
+		NotificationCenter.default.addObserver(
+			forName: UIApplication.didEnterBackgroundNotification,
+			object: nil,
+			queue: .main,
+			using: { [weak self] _ in
+				guard let self else {return}
+				UserDefaults.standard.set(self.currentTime, forKey: "lastPlaybackPosition")
+			}
+		)
+		
+		eventHandler.onFinish = { [weak self] in
+			guard let self else {return}
+			self.isPlaying = false
+			self.currentTime = 0
+			self.timer?.invalidate()
+			self.timer = nil
+		}
+		
+		
 	}
 	
 	func playHymm() {
@@ -96,6 +113,7 @@ final class AudioPlaybackManager: NSObject {
 			
 			do {
 				player = try AVAudioPlayer(contentsOf: url)
+				player?.currentTime = savedTime
 				player?.delegate = eventHandler
 			} catch {
 				lastErrorMessage = error.localizedDescription
@@ -104,9 +122,14 @@ final class AudioPlaybackManager: NSObject {
 		
 		// 2. 실행중이면 일시정지, 실행중이 아니면 재생
 		switch isPlaying {
-		case true: player?.pause()
+		case true:
+			player?.pause()
 			timer?.invalidate()
 			timer = nil
+			
+			// 일시 정지에도 UserDefault에 currentTime 저장해 놓기 (혹시 모르니 설정)
+			UserDefaults.standard.set(self.currentTime, forKey: "lastPlaybackPosition")
+			
 		case false:
 			// 음악 실행중이 아닐때 음악을 재생시키고 timer 작동, 드래깅 중이 아닐때(손을 뗀 시점 포함) player 값을 0.1초 마다 manager 값과 동기화
 			player?.play()
@@ -133,6 +156,7 @@ final class AudioPlaybackManager: NSObject {
 		)
 	}
 	
+	// 잠금화면 각 요소의 정보 표시
 	func updateNowPlayingInfo(title: String, currentTime: Double, duration: Double, rate: Double) {
 		
 		var nowPlayingInfo: [String: Any] = [:]
