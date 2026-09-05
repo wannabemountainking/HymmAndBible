@@ -16,7 +16,15 @@ final class AudioPlaybackManager: NSObject {
 	
 	static let shared = AudioPlaybackManager()
 	
+	let hymns: [Hymn] = [
+		Hymn(number: 1, title: "만복의 근원 하나님"),
+		Hymn(number: 2, title: "이 천지간 만물들아"),
+		Hymn(number: 3, title: "지금까지 지내온 것")
+	]
+	var currentIndex: Int = 0
+	
 	var player: AVAudioPlayer? = nil
+	
 	var lastErrorMessage: String = "에러 없음"
 	var isPlaying: Bool = false
 	var currentTime: Double = 0
@@ -46,12 +54,12 @@ final class AudioPlaybackManager: NSObject {
 		let commandCenter = MPRemoteCommandCenter.shared()
 		commandCenter.playCommand.addTarget { [weak self] event in
 			guard let self else {return .commandFailed}
-			self.playHymm()
+			self.togglePlayback()
 			return .success
 		}
 		commandCenter.pauseCommand.addTarget { [weak self] event in
 			guard let self else {return .commandFailed}
-			self.playHymm()
+			self.togglePlayback()
 			return .success
 		}
 		
@@ -67,12 +75,12 @@ final class AudioPlaybackManager: NSObject {
 				switch type {
 				case .began:
 					if self.isPlaying {
-						self.playHymm()
+						self.togglePlayback()
 					}
 				case .ended:
 					guard let options = notification.interruptionOptions else { return }
 					if options.contains(.shouldResume) {
-						self.playHymm()
+						self.togglePlayback()
 					}
 				@unknown default:
 					break
@@ -102,46 +110,15 @@ final class AudioPlaybackManager: NSObject {
 		
 	}
 	
-	func playHymm() {
-		
-		// 1. player가 있는지 확인하고 (있으면 player 안만들고 없으면 만든다)
-		if player == nil {
-			guard let url = Bundle.main.url(forResource: "untilNow", withExtension: "mp3") else {
-				lastErrorMessage = "URL 경로를 확인하세요"
-				return
+	func togglePlayback() {
+		if let player = player {
+			if isPlaying {
+				pauseHymn()
+			} else {
+				resumeHymn()
 			}
-			
-			do {
-				player = try AVAudioPlayer(contentsOf: url)
-				player?.currentTime = savedTime
-				player?.delegate = eventHandler
-			} catch {
-				lastErrorMessage = error.localizedDescription
-			}
-		}
-		
-		// 2. 실행중이면 일시정지, 실행중이 아니면 재생
-		switch isPlaying {
-		case true:
-			player?.pause()
-			timer?.invalidate()
-			timer = nil
-			
-			// 일시 정지에도 UserDefault에 currentTime 저장해 놓기 (혹시 모르니 설정)
-			UserDefaults.standard.set(self.currentTime, forKey: "lastPlaybackPosition")
-			
-		case false:
-			// 음악 실행중이 아닐때 음악을 재생시키고 timer 작동, 드래깅 중이 아닐때(손을 뗀 시점 포함) player 값을 0.1초 마다 manager 값과 동기화
-			player?.play()
-			timer = Timer.scheduledTimer(
-				withTimeInterval: 0.1,
-				repeats: true,
-				block: { [weak self] timer in
-					guard let self else {return}
-					guard !self.isDragging else { return }
-					self.currentTime = self.player?.currentTime ?? 0
-				}
-			)
+		} else {
+			playSong(at: currentIndex)
 		}
 		
 		// 3. isPlaying을 토글해서 isPlaying의 상태가 변한 것을 바로 반영한다
@@ -149,12 +126,54 @@ final class AudioPlaybackManager: NSObject {
 		
 		// 4. 잠금화면 표시 목록 설정
 		updateNowPlayingInfo(
-			title: "찬송가 301장",
+			title: hymns[currentIndex].title,
 			currentTime: currentTime,
 			duration: player?.duration ?? 0,
 			rate: isPlaying ? 1.0 : 0.0
 		)
 	}
+	
+	func pauseHymn() {
+		player?.pause()
+		timer?.invalidate()
+		timer = nil
+		
+		// 일시 정지에도 UserDefault에 currentTime 저장해 놓기 (혹시 모르니 설정)
+		UserDefaults.standard.set(self.currentTime, forKey: "lastPlaybackPosition")
+	}
+	
+	func resumeHymn() {
+		player?.play()
+		player?.currentTime = savedTime
+	}
+	
+	func playSong(at index: Int) {
+		// 무조건 player를 만들어야 함
+		guard let url = Bundle.main.url(forResource: "hymn_\(String(format: "%03d", index))", withExtension: "mp3") else {
+			lastErrorMessage = "URL 경로를 확인하세요"
+			return
+		}
+		
+		do {
+			player = try AVAudioPlayer(contentsOf: url)
+			player?.delegate = eventHandler
+		} catch {
+			lastErrorMessage = error.localizedDescription
+		}
+		
+		// 음악 실행중이 아님. 음악을 재생시키고 timer 작동, 드래깅 중이 아닐때(손을 뗀 시점 포함) player 값을 0.1초 마다 manager 값과 동기화
+		player?.play()
+		timer = Timer.scheduledTimer(
+			withTimeInterval: 0.1,
+			repeats: true,
+			block: { [weak self] timer in
+				guard let self = self,
+					  !self.isDragging else { return }
+				self.currentTime = self.player?.currentTime ?? 0.0
+			}
+		)
+	}
+	
 	
 	// 잠금화면 각 요소의 정보 표시
 	func updateNowPlayingInfo(title: String, currentTime: Double, duration: Double, rate: Double) {

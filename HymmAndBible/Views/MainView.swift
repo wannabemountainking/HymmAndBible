@@ -46,7 +46,7 @@ struct MainView: View {
 			
 			Button {
 				// Action
-				audioManager.playHymm()
+				audioManager.togglePlayback()
 			} label: {
 				Image(systemName: audioManager.isPlaying ? "pause.fill" : "play.fill")
 					.resizable()
