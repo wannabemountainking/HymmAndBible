@@ -102,16 +102,24 @@ final class AudioPlaybackManager: NSObject {
 		eventHandler.onFinish = { [weak self] in
 			guard let self else {return}
 			self.isPlaying = false
-			self.currentTime = 0
 			self.timer?.invalidate()
 			self.timer = nil
+			
+			if self.currentIndex == self.hymns.count - 1 {
+				self.currentIndex = 0
+			} else {
+				self.currentIndex += 1
+			}
+			self.playSong(at: self.currentIndex)
+			self.currentTime = 0
 		}
 		
 		
 	}
 	
 	func togglePlayback() {
-		if let player = player {
+		
+		if player != nil {
 			if isPlaying {
 				pauseHymn()
 			} else {
@@ -144,25 +152,28 @@ final class AudioPlaybackManager: NSObject {
 	
 	func resumeHymn() {
 		player?.play()
-		player?.currentTime = savedTime
 	}
 	
 	func playSong(at index: Int) {
 		// 무조건 player를 만들어야 함
-		guard let url = Bundle.main.url(forResource: "hymn_\(String(format: "%03d", index))", withExtension: "mp3") else {
+		guard let url = hymns[index].url else {
 			lastErrorMessage = "URL 경로를 확인하세요"
 			return
 		}
-		
+		print(url)
 		do {
 			player = try AVAudioPlayer(contentsOf: url)
 			player?.delegate = eventHandler
+			player?.currentTime = savedTime
+			savedTime = 0
+			currentIndex = index
 		} catch {
 			lastErrorMessage = error.localizedDescription
 		}
 		
 		// 음악 실행중이 아님. 음악을 재생시키고 timer 작동, 드래깅 중이 아닐때(손을 뗀 시점 포함) player 값을 0.1초 마다 manager 값과 동기화
 		player?.play()
+		isPlaying = true
 		timer = Timer.scheduledTimer(
 			withTimeInterval: 0.1,
 			repeats: true,
@@ -172,6 +183,7 @@ final class AudioPlaybackManager: NSObject {
 				self.currentTime = self.player?.currentTime ?? 0.0
 			}
 		)
+		
 	}
 	
 	

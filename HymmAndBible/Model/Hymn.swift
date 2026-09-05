@@ -14,7 +14,7 @@ struct Hymn: Identifiable {
 	let title: String
 	
 	var filename: String {
-		return "hymm_\(String(format: "%03d", number))"
+		return "hymn_\(String(format: "%03d", number))"
 	}
 	
 	var url: URL? {
