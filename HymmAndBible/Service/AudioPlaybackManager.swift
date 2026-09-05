@@ -158,6 +158,7 @@ final class AudioPlaybackManager: NSObject {
 		// 무조건 player를 만들어야 함
 		guard let url = hymns[index].url else {
 			lastErrorMessage = "URL 경로를 확인하세요"
+            print(lastErrorMessage)
 			return
 		}
 		print(url)

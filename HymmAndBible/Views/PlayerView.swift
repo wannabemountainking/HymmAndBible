@@ -17,7 +17,6 @@ struct PlayerView: View {
 			Text(manager.hymns[manager.currentIndex].title)
 				.font(.title3)
 			if let player = manager.player {
-				let _ = print(player)
 				Slider(
 					value: $manager.currentTime,
 					in: 0...player.duration,

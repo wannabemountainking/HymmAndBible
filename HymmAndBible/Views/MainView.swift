@@ -37,9 +37,12 @@ struct MainView: View {
 			
 			Divider()
 			
-			PlayerView(manager: audioManager)
-
+            if audioManager.player != nil {
+                PlayerView(manager: audioManager)
+                    .transition(.slide.combined(with: .blurReplace))
+            }
 		} //:VSTACK
+        .animation(.easeInOut, value: audioManager.isPlaying)
     }
 }
 
