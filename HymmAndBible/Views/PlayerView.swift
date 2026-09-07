@@ -22,9 +22,10 @@ struct PlayerView: View {
 					in: 0...player.duration,
 					label: { Text("재생진행율")
 					},
-					minimumValueLabel: { Text("00:00") },
+					minimumValueLabel: { Text("00:01") },
 					maximumValueLabel: { Text(player.duration.runningTime) },
 					onEditingChanged: { editing in
+						print("editing 콜백: \(editing), 현재 currentTime: \(manager.currentTime)")
 						manager.isDragging = editing
 						if !editing {
 							manager.player?.currentTime = manager.currentTime

@@ -26,8 +26,18 @@ final class AudioPlaybackManager: NSObject {
 	var player: AVAudioPlayer? = nil
 	
 	var lastErrorMessage: String = "에러 없음"
-	var isPlaying: Bool = false
-	var currentTime: Double = 0
+	var isPlaying: Bool = false {
+		didSet {
+			// 잠금화면 표시 목록 설정
+			updateNowPlayingInfo(
+				title: hymns[currentIndex].title,
+				currentTime: currentTime,
+				duration: player?.duration ?? 0,
+				rate: isPlaying ? 1.0 : 0.0
+			)
+		}
+	}
+	var currentTime: Double = 0.1
 	var isDragging: Bool = false
 	var timer: Timer? = nil
 	var savedTime: Double = 0
@@ -111,7 +121,7 @@ final class AudioPlaybackManager: NSObject {
 				self.currentIndex += 1
 			}
 			self.playSong(at: self.currentIndex)
-			self.currentTime = 0
+			self.currentTime = 0.1
 		}
 		
 		
@@ -128,21 +138,11 @@ final class AudioPlaybackManager: NSObject {
 		} else {
 			playSong(at: currentIndex)
 		}
-		
-		// 3. isPlaying을 토글해서 isPlaying의 상태가 변한 것을 바로 반영한다
-		isPlaying.toggle()
-		
-		// 4. 잠금화면 표시 목록 설정
-		updateNowPlayingInfo(
-			title: hymns[currentIndex].title,
-			currentTime: currentTime,
-			duration: player?.duration ?? 0,
-			rate: isPlaying ? 1.0 : 0.0
-		)
 	}
 	
 	func pauseHymn() {
 		player?.pause()
+		isPlaying = false
 		timer?.invalidate()
 		timer = nil
 		
@@ -152,6 +152,8 @@ final class AudioPlaybackManager: NSObject {
 	
 	func resumeHymn() {
 		player?.play()
+		isPlaying = true
+		timer = setTimer()
 	}
 	
 	func playSong(at index: Int) {
@@ -161,7 +163,6 @@ final class AudioPlaybackManager: NSObject {
             print(lastErrorMessage)
 			return
 		}
-		print(url)
 		do {
 			player = try AVAudioPlayer(contentsOf: url)
 			player?.delegate = eventHandler
@@ -175,18 +176,23 @@ final class AudioPlaybackManager: NSObject {
 		// 음악 실행중이 아님. 음악을 재생시키고 timer 작동, 드래깅 중이 아닐때(손을 뗀 시점 포함) player 값을 0.1초 마다 manager 값과 동기화
 		player?.play()
 		isPlaying = true
-		timer = Timer.scheduledTimer(
+		timer = setTimer()
+		
+	}
+	
+	private func setTimer() -> Timer {
+		return Timer.scheduledTimer(
 			withTimeInterval: 0.1,
 			repeats: true,
 			block: { [weak self] timer in
 				guard let self = self,
-					  !self.isDragging else { return }
-				self.currentTime = self.player?.currentTime ?? 0.0
+					  !self.isDragging else {
+					return
+				}
+				self.currentTime = self.player?.currentTime ?? 0.1
 			}
 		)
-		
 	}
-	
 	
 	// 잠금화면 각 요소의 정보 표시
 	func updateNowPlayingInfo(title: String, currentTime: Double, duration: Double, rate: Double) {
