@@ -9,45 +9,44 @@ import SwiftUI
 
 struct SliderComponent: View {
 	
-	@State private var offset: CGSize = .zero
+	@State private var sliderValue: CGFloat = 0.0
 	
     var body: some View {
-		VStack {
+		VStack(spacing: 20) {
 			GeometryReader { geo in
-				ZStack {
-					// Background Color
-					Color.gray.opacity(0.3)
-						.ignoresSafeArea()
+				let totalSliderWidth = geo.size.width
+				
+				ZStack(alignment: .leading) {
+					// Background
+					Capsule()
+						.fill(Color.gray.opacity(0.5))
+						.frame(height: 10)
+						.frame(maxWidth: .infinity)
 					// Content
 					
-					Circle()
-						.frame(width: 10, height: 10)
-						.offset(offset)
-						.gesture(
-							DragGesture()
-								.onChanged(
-									{ value in
-										offset = CGSize(
-											width: value.location.x,
-											height: geo.size.height
-										)
-								})
-								.onEnded(
-									{ value in
-										offset = CGSize(
-											width: value.location.x,
-											height: geo.size.height
-										)
-								})
-						)
+				Capsule()
+					.fill(Color.green.opacity(0.8))
+					.frame(height: 10)
+					.frame(width: totalSliderWidth * sliderValue, height: 12)
 					
+				Circle()
+					.fill(Color.green.opacity(0.8))
+					.frame(height: 12)
+					.offset(x: (totalSliderWidth * sliderValue) - 6)
+					.gesture(
+						DragGesture(minimumDistance: 0.0)
+							.onChanged({ value in
+								let locationX = max(0, min(value.location.x, totalSliderWidth))
+								sliderValue = locationX / totalSliderWidth
+							})
+					)
 				} //:ZSTACK
-				.frame(height: 3)
-				.frame(maxWidth: .infinity)
-				.contentShape(Rectangle())
+				
+				
+				
 			}
+			
 		} //:VSTACK
-		.padding(10)
     }
 }
 
