@@ -9,7 +9,7 @@ import Foundation
 import AVFAudio
 
 
-extension Double {
+extension TimeInterval {
 	var runningTime: String {
 		let formatter = DateComponentsFormatter()
 		formatter.allowedUnits = [.minute, .second]

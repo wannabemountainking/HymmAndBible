@@ -37,7 +37,7 @@ final class AudioPlaybackManager: NSObject {
 			)
 		}
 	}
-	var currentTime: Double = 0.1
+	var currentTime: Double = 0
 	var isDragging: Bool = false
 	var timer: Timer? = nil
 	var savedTime: Double = 0
@@ -121,7 +121,7 @@ final class AudioPlaybackManager: NSObject {
 				self.currentIndex += 1
 			}
 			self.playSong(at: self.currentIndex)
-			self.currentTime = 0.1
+			self.currentTime = 0
 		}
 		
 		
@@ -189,7 +189,7 @@ final class AudioPlaybackManager: NSObject {
 					  !self.isDragging else {
 					return
 				}
-				self.currentTime = self.player?.currentTime ?? 0.1
+				self.currentTime = self.player?.currentTime ?? 0
 			}
 		)
 	}

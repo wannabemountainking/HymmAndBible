@@ -16,32 +16,19 @@ struct PlayerView: View {
 		VStack {
 			Text(manager.hymns[manager.currentIndex].title)
 				.font(.title3)
+			
 			if let player = manager.player {
-				Slider(
-					value: $manager.currentTime,
-					in: 0...player.duration,
-					label: { Text("재생진행율")
-					},
-					minimumValueLabel: { Text("00:01") },
-					maximumValueLabel: { Text(player.duration.runningTime) },
-					onEditingChanged: { editing in
-						print("editing 콜백: \(editing), 현재 currentTime: \(manager.currentTime)")
-						manager.isDragging = editing
-						if !editing {
-							manager.player?.currentTime = manager.currentTime
-							manager.updateNowPlayingInfo(
-								title: manager.hymns[manager.currentIndex].title,
-								currentTime: manager.currentTime,
-								duration: manager.player?.duration ?? 0,
-								rate: manager.isPlaying ? 1.0 : 0.0
-							)
-						}
-					}
-				)
-				.padding(.horizontal, 20)
-				
-				Text("진행된 시간: \(manager.currentTime.runningTime)")
-			}
+				HStack(spacing: 10) {
+					Text("00:00")
+					
+					SliderComponent(manager: manager)
+					
+					Text(player.duration.runningTime)
+				} //:HSTACK
+				.padding(20)
+			}//:CONDITIONAL
+			
+			Text("진행된 시간: \(manager.currentTime.runningTime)")
 			
 			Button {
 				// Action

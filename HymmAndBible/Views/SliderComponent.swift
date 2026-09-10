@@ -6,10 +6,11 @@
 //
 
 import SwiftUI
+import AVFAudio
 
 struct SliderComponent: View {
 	
-	@State private var sliderValue: CGFloat = 0.0
+	@Bindable var manager: AudioPlaybackManager
 	
     var body: some View {
         VStack(spacing: 20) {
@@ -22,20 +23,33 @@ struct SliderComponent: View {
                         .frame(height: 12)
                         .frame(maxWidth: .infinity)
                     // Content
+					Capsule()
+						.foregroundStyle(Color.green.opacity(0.8))
+						.frame(width: (manager.currentTime / (manager.player?.duration ?? 1)) * totalWidth + 12, height: 12)
                     Circle()
                         .foregroundStyle(Color.green.opacity(0.8))
                         .frame(width: 12, height: 12)
-                        .offset(x: sliderValue * totalWidth)
+						.offset(x: (manager.currentTime / (manager.player?.duration ?? 1)) * totalWidth)
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged({ value in
-                                    let locationX = max(6, min(value.location.x, totalWidth - 6))
-                                    sliderValue = locationX / totalWidth
+									manager.isDragging = true
+                                    let locationX = max(0, min(value.location.x, totalWidth))
+									manager.currentTime = (locationX / totalWidth) * (manager.player?.duration ?? 1)
                                 })
+								.onEnded(
+									{ value in
+										manager.isDragging = false
+										manager.player?.currentTime = manager.currentTime
+										manager.updateNowPlayingInfo(
+											title: manager.hymns[manager.currentIndex].title,
+											currentTime: manager.currentTime,
+											duration: manager.player?.duration ?? 1,
+											rate: manager.isPlaying ? 1.0 : 0.0
+										)
+								})
                         )
-                    Capsule()
-                        .foregroundStyle(Color.green.opacity(0.8))
-                        .frame(width: sliderValue * totalWidth + 6, height: 12)
+
                 } //:ZSTACK
             } //:GEOMETRY
             .frame(height: 12)
@@ -44,5 +58,5 @@ struct SliderComponent: View {
 }
 
 #Preview {
-    SliderComponent()
+	SliderComponent(manager: AudioPlaybackManager.shared)
 }
